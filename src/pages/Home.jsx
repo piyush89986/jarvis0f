@@ -1,0 +1,523 @@
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../hooks/useSocket';
+import { useVoice } from '../hooks/useVoice';
+import ThreeOrb from '../components/ThreeOrb/ThreeOrb';
+import toast from 'react-hot-toast';
+import { Mic, MicOff, Send, ChevronDown, Zap, Volume2 } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
+import api from '../api/axios';
+
+const Home = () => {
+  const { user, token } = useAuth();
+  const [messages, setMessages] = useState([]);
+  const [inputText, setInputText] = useState('');
+  const [orbState, setOrbState] = useState('idle');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingText, setStreamingText] = useState('');
+  const [sessionId] = useState(() => uuidv4());
+  const [voiceMode, setVoiceMode] = useState(false);
+  const [audioLevel, setAudioLevel] = useState(0);
+  const [isAutoSpeak, setIsAutoSpeak] = useState(true);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
+
+  const chatEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
+  const pressTimer = useRef(null);
+  const streamBufferRef = useRef('');
+
+  // Refs for Hands-free Voice Loop
+  const wakeWordRecRef = useRef(null);
+  const isListeningWakeWordRef = useRef(false);
+  const silenceTimerRef = useRef(null);
+  const speechDetectedRef = useRef(false);
+
+
+  // ─── Socket setup ───
+  const { sendMessage, sendVoice } = useSocket(token, {
+    onChunk: (delta) => {
+      streamBufferRef.current += delta;
+      setStreamingText(streamBufferRef.current);
+    },
+    onDone: async ({ message, usedRAG }) => {
+      const finalContent = streamBufferRef.current;
+      streamBufferRef.current = '';
+      setStreamingText('');
+      setIsStreaming(false);
+      setOrbState('idle');
+
+      const assistantMsg = {
+        _id: message?._id || Date.now().toString(),
+        role: 'assistant',
+        content: finalContent,
+        usedRAG,
+        createdAt: new Date(),
+      };
+      setMessages((prev) => [...prev, assistantMsg]);
+
+      // Auto-speak if voice mode
+      if (voiceMode && isAutoSpeak) {
+        setOrbState('speaking');
+        await speakText(finalContent);
+        setOrbState('idle');
+      }
+    },
+    onTypingStart: () => {
+      setOrbState('thinking');
+      setIsStreaming(true);
+      streamBufferRef.current = '';
+    },
+    onTypingStop: () => {
+      if (!streamBufferRef.current) setIsStreaming(false);
+    },
+    onError: (msg) => {
+      setIsStreaming(false);
+      setOrbState('error');
+      toast.error(msg);
+      setTimeout(() => setOrbState('idle'), 2000);
+    },
+    onTranscript: (transcript) => {
+      setMessages((prev) => [...prev, {
+        _id: Date.now().toString(),
+        role: 'user',
+        content: `🎤 ${transcript}`,
+        createdAt: new Date(),
+      }]);
+    },
+    onVoiceDone: ({ content }) => {
+      // Voice response text handled by onDone
+    },
+  });
+
+  // ─── Voice setup ───
+  const { isRecording, startRecording, stopRecording, speakText, audioLevel: voiceAudioLevel, startWakeWordDetection } = useVoice({
+    onRecordingStart: () => {
+      setOrbState('listening');
+    },
+    onRecordingStop: () => {
+      setOrbState('thinking');
+    },
+    onError: (msg) => {
+      toast.error(msg);
+      setOrbState('idle');
+    },
+  });
+
+  // Track audio level for orb
+  useEffect(() => {
+    setAudioLevel(voiceAudioLevel);
+  }, [voiceAudioLevel]);
+
+  // ─── Hands-free Wake Word Detection ───
+  useEffect(() => {
+    if (!voiceMode || isRecording || orbState !== 'idle') {
+      if (wakeWordRecRef.current) {
+        try {
+          wakeWordRecRef.current.stop();
+        } catch (e) {}
+          wakeWordRecRef.current = null;
+      }
+      isListeningWakeWordRef.current = false;
+      return;
+    }
+
+    if (!isListeningWakeWordRef.current) {
+      console.log("Starting wake word listener...");
+      const rec = startWakeWordDetection(async () => {
+        console.log("Wake word triggered!");
+        isListeningWakeWordRef.current = false;
+        
+        // Stop current wake word listener temporarily
+        try { rec.stop(); } catch (e) {}
+        wakeWordRecRef.current = null;
+
+        // Say "bol be"
+        setOrbState('speaking');
+        const phrases = ["bol be!", "haan bhai, bol?", "kya hukum hai boss?", "kya help chahiye bhai?"];
+        const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
+
+        setMessages((prev) => [...prev, {
+          _id: Date.now().toString(),
+          role: 'assistant',
+          content: randomPhrase,
+          createdAt: new Date(),
+        }]);
+
+        await speakText(randomPhrase);
+
+        // Immediately start recording the query
+        setOrbState('listening');
+        const mimeType = await startRecording();
+        toast.success("Sun raha hun! 🎤");
+      });
+
+      wakeWordRecRef.current = rec;
+      isListeningWakeWordRef.current = true;
+    }
+
+    return () => {
+      if (wakeWordRecRef.current) {
+        try { wakeWordRecRef.current.stop(); } catch (e) {}
+        wakeWordRecRef.current = null;
+      }
+      isListeningWakeWordRef.current = false;
+    };
+  }, [voiceMode, isRecording, orbState, startWakeWordDetection, startRecording, speakText]);
+
+  // ─── Hands-free Silence Detection ───
+  useEffect(() => {
+    if (!isRecording) {
+      speechDetectedRef.current = false;
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      return;
+    }
+
+    // Set a fallback timer if no speech is detected at all (5 seconds)
+    const fallbackTimer = setTimeout(async () => {
+      if (!speechDetectedRef.current && isRecording) {
+        console.log("No speech detected at all, auto-stopping...");
+        await stopRecording();
+        setOrbState('idle');
+        toast.error("Kuch sunaai nahi diya bhai");
+      }
+    }, 5000);
+
+    if (audioLevel > 0.08) {
+      speechDetectedRef.current = true;
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+      }
+    } else if (speechDetectedRef.current) {
+      if (!silenceTimerRef.current) {
+        silenceTimerRef.current = setTimeout(async () => {
+          console.log("Silence detected, auto-stopping...");
+          const result = await stopRecording();
+          if (result) {
+            setOrbState('thinking');
+            sendVoice(result.base64, sessionId, result.mimeType);
+          }
+        }, 1800);
+      }
+    }
+
+    return () => {
+      clearTimeout(fallbackTimer);
+    };
+  }, [audioLevel, isRecording, stopRecording, sendVoice, sessionId]);
+
+  // Auto-scroll
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, streamingText]);
+
+  // Load chat history on mount
+  useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        const res = await api.get(`/chat/history?sessionId=${sessionId}&limit=20`);
+        if (res.data.messages?.length > 0) {
+          setMessages(res.data.messages);
+        } else {
+          // Welcome message
+          setMessages([{
+            _id: 'welcome',
+            role: 'assistant',
+            content: `Yo ${user?.name?.split(' ')[0] || 'bhai'}! 👋 Main J.A.R.V.I.S hun — tera personal AI study buddy.\n\nKya bolna hai? Padhai mein help chahiye, koi doubt hai, ya sirf baat karni hai — bol bhai! 🤖`,
+            createdAt: new Date(),
+          }]);
+        }
+      } catch (e) {
+        setMessages([{
+          _id: 'welcome',
+          role: 'assistant',
+          content: `Yo ${user?.name?.split(' ')[0] || 'bhai'}! 👋 J.A.R.V.I.S ready hai — kya help chahiye?`,
+          createdAt: new Date(),
+        }]);
+      }
+    };
+    loadHistory();
+  }, []);
+
+  // ─── Send text message ───
+  const handleSendText = useCallback(() => {
+    const text = inputText.trim();
+    if (!text || isStreaming) return;
+
+    const userMsg = {
+      _id: Date.now().toString(),
+      role: 'user',
+      content: text,
+      createdAt: new Date(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
+    setInputText('');
+    sendMessage(text, sessionId);
+  }, [inputText, isStreaming, sendMessage, sessionId]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendText();
+    }
+  };
+
+  // ─── Long-press mic (mobile) ───
+  const handleMicPressStart = useCallback(async () => {
+    pressTimer.current = setTimeout(async () => {
+      const mimeType = await startRecording();
+      if (mimeType) toast.success('Bol bhai! 🎤', { duration: 1500 });
+    }, 150);
+  }, [startRecording]);
+
+  const handleMicPressEnd = useCallback(async () => {
+    clearTimeout(pressTimer.current);
+    if (isRecording) {
+      const result = await stopRecording();
+      if (result) {
+        setOrbState('thinking');
+        sendVoice(result.base64, sessionId, result.mimeType);
+      }
+    }
+  }, [isRecording, stopRecording, sendVoice, sessionId]);
+
+  // Scroll detection
+  const handleScroll = () => {
+    const el = chatContainerRef.current;
+    if (!el) return;
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+    setShowScrollBtn(!isNearBottom);
+  };
+
+  const formatTime = (date) => {
+    return new Date(date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  return (
+    <div className="app-container" style={{ background: 'var(--grad-bg)' }}>
+      {/* Header */}
+      <div style={{
+        position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)',
+        width: '100%', maxWidth: '480px',
+        padding: '16px 20px', zIndex: 50,
+        background: 'rgba(5,8,20,0.85)', backdropFilter: 'blur(20px)',
+        borderBottom: '1px solid var(--clr-border)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            width: '32px', height: '32px', borderRadius: '50%',
+            background: 'var(--grad-primary)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '16px', flexShrink: 0
+          }}>🤖</div>
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: '600', fontFamily: 'Space Grotesk' }}>J.A.R.V.I.S</div>
+            <div style={{ fontSize: '10px', color: 'var(--clr-accent-green)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--clr-accent-green)', display: 'inline-block', animation: 'micPulse 2s infinite' }} />
+              Online — {user?.branch} Sem {user?.semester}
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {/* Auto-speak toggle */}
+          <button
+            onClick={() => setIsAutoSpeak(!isAutoSpeak)}
+            style={{
+              background: isAutoSpeak ? 'rgba(99,102,241,0.2)' : 'transparent',
+              border: `1px solid ${isAutoSpeak ? 'var(--clr-accent-primary)' : 'var(--clr-border)'}`,
+              borderRadius: '8px', padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px',
+              color: isAutoSpeak ? 'var(--clr-accent-primary)' : 'var(--clr-text-muted)', fontSize: '11px',
+            }}
+          >
+            <Volume2 size={13} />
+            {isAutoSpeak ? 'On' : 'Off'}
+          </button>
+          {/* Voice mode toggle */}
+          <button
+            onClick={() => setVoiceMode(!voiceMode)}
+            style={{
+              background: voiceMode ? 'rgba(16,185,129,0.15)' : 'transparent',
+              border: `1px solid ${voiceMode ? 'var(--clr-accent-green)' : 'var(--clr-border)'}`,
+              borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
+              color: voiceMode ? 'var(--clr-accent-green)' : 'var(--clr-text-muted)', fontSize: '11px',
+            }}
+          >
+            {voiceMode ? '🎙️ Voice' : '⌨️ Text'}
+          </button>
+        </div>
+      </div>
+
+      {/* ─── Orb ─── */}
+      <div style={{
+        paddingTop: '80px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        paddingLeft: '20px', paddingRight: '20px'
+      }}>
+        <div className="orb-container" style={{ maxWidth: '220px', maxHeight: '220px' }}>
+          <ThreeOrb state={orbState} audioLevel={audioLevel} />
+        </div>
+
+        {/* State hint */}
+        <div style={{ fontSize: '12px', color: 'var(--clr-text-secondary)', marginTop: '-8px', marginBottom: '16px', textAlign: 'center' }}>
+          {orbState === 'idle' && !voiceMode && 'Neeche type kar ya voice switch kar'}
+          {orbState === 'idle' && voiceMode && 'Mic button dabake rakh — bol apna question'}
+          {orbState === 'listening' && '🎤 Sun raha hun...'}
+          {orbState === 'thinking' && '🧠 Soch raha hun...'}
+          {orbState === 'speaking' && '🔊 Bol raha hun...'}
+          {orbState === 'error' && '⚠️ Kuch gadbad ho gayi'}
+        </div>
+      </div>
+
+      {/* ─── Chat area ─── */}
+      <div
+        ref={chatContainerRef}
+        onScroll={handleScroll}
+        style={{
+          flex: 1, overflowY: 'auto',
+          padding: '0 16px 16px',
+          display: 'flex', flexDirection: 'column', gap: '12px',
+          paddingBottom: '160px' /* space for bottom input + nav */
+        }}
+      >
+        {messages.map((msg) => (
+          <div key={msg._id} style={{
+            display: 'flex',
+            flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
+            alignItems: 'flex-end', gap: '8px'
+          }}>
+            {/* Avatar */}
+            {msg.role === 'assistant' && (
+              <div style={{
+                width: '28px', height: '28px', borderRadius: '50%',
+                background: 'var(--grad-primary)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '14px', flexShrink: 0
+              }}>🤖</div>
+            )}
+
+            <div style={{
+              display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '85%',
+              alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start'
+            }}>
+              <div className={`message-bubble ${msg.role}`}>
+                {msg.content}
+              </div>
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <span style={{ fontSize: '10px', color: 'var(--clr-text-muted)' }}>
+                  {formatTime(msg.createdAt)}
+                </span>
+                {msg.usedRAG && (
+                  <span style={{
+                    fontSize: '10px', color: 'var(--clr-accent-secondary)',
+                    display: 'flex', alignItems: 'center', gap: '2px'
+                  }}>
+                    <Zap size={9} /> notes se
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {/* Streaming message */}
+        {isStreaming && (
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--grad-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>🤖</div>
+            <div className="message-bubble assistant" style={{ minWidth: '60px' }}>
+              {streamingText ? (
+                <span>{streamingText}<span style={{ opacity: 0.5, animation: 'typingBounce 1s infinite' }}>▌</span></span>
+              ) : (
+                <div className="typing-indicator">
+                  <span /><span /><span />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* Scroll to bottom btn */}
+      {showScrollBtn && (
+        <button
+          onClick={() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
+          style={{
+            position: 'fixed', bottom: '160px', right: '20px',
+            width: '36px', height: '36px', borderRadius: '50%',
+            background: 'var(--clr-bg-secondary)', border: '1px solid var(--clr-border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', zIndex: 40, color: 'var(--clr-text-secondary)'
+          }}
+        >
+          <ChevronDown size={16} />
+        </button>
+      )}
+
+      {/* ─── Input area ─── */}
+      <div style={{
+        position: 'fixed', bottom: 'var(--bottom-nav-height)', left: '50%',
+        transform: 'translateX(-50%)', width: '100%', maxWidth: '480px',
+        padding: '12px 16px',
+        background: 'rgba(5,8,20,0.9)', backdropFilter: 'blur(20px)',
+        borderTop: '1px solid var(--clr-border)', zIndex: 40,
+      }}>
+        {voiceMode ? (
+          /* Voice mode — big mic button */
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', paddingBottom: '4px' }}>
+            <p style={{ fontSize: '11px', color: 'var(--clr-text-muted)', margin: 0 }}>
+              {isRecording ? 'Chod de button — message jayega' : 'Dabake rakho aur bolo'}
+            </p>
+            <button
+              className={`mic-btn ${isRecording ? 'recording' : 'idle'}`}
+              onTouchStart={handleMicPressStart}
+              onTouchEnd={handleMicPressEnd}
+              onMouseDown={handleMicPressStart}
+              onMouseUp={handleMicPressEnd}
+              onMouseLeave={handleMicPressEnd}
+            >
+              {isRecording ? <MicOff size={28} color="white" /> : <Mic size={28} color="white" />}
+            </button>
+          </div>
+        ) : (
+          /* Text mode */
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+            <textarea
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Kuch bhi puchh — padhai, doubt, kuch bhi..."
+              rows={1}
+              style={{
+                flex: 1, background: 'var(--glass-bg)', border: '1px solid var(--clr-border)',
+                borderRadius: '16px', padding: '12px 16px', color: 'var(--clr-text-primary)',
+                fontFamily: 'Inter, sans-serif', fontSize: '14px', outline: 'none',
+                resize: 'none', maxHeight: '120px', lineHeight: '1.5',
+                transition: 'border-color 0.2s',
+              }}
+              onFocus={(e) => e.target.style.borderColor = 'var(--clr-accent-primary)'}
+              onBlur={(e) => e.target.style.borderColor = 'var(--clr-border)'}
+            />
+            <button
+              onClick={handleSendText}
+              disabled={!inputText.trim() || isStreaming}
+              style={{
+                width: '44px', height: '44px', borderRadius: '50%', flexShrink: 0,
+                background: inputText.trim() && !isStreaming ? 'var(--grad-primary)' : 'var(--clr-bg-card)',
+                border: 'none', cursor: inputText.trim() ? 'pointer' : 'default',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.2s', transform: inputText.trim() ? 'scale(1)' : 'scale(0.9)',
+                boxShadow: inputText.trim() ? '0 4px 15px rgba(99,102,241,0.4)' : 'none',
+              }}
+            >
+              {isStreaming ? <span className="spinner" style={{ width: '16px', height: '16px' }} /> : <Send size={18} color="white" />}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Home;
