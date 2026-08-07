@@ -90,7 +90,7 @@ const Home = () => {
   });
 
   // ─── Voice setup ───
-  const { isRecording, startRecording, stopRecording, speakText, audioLevel: voiceAudioLevel, startWakeWordDetection } = useVoice({
+  const { isRecording, startRecording, stopRecording, speakText, audioLevel: voiceAudioLevel, startContinuousListening } = useVoice({
     onRecordingStart: () => {
       setOrbState('listening');
     },
@@ -108,103 +108,105 @@ const Home = () => {
     setAudioLevel(voiceAudioLevel);
   }, [voiceAudioLevel]);
 
-  // ─── Hands-free Wake Word Detection ───
+    // Refs and States for Hands-free Voice Loop
+  const isListeningRef = useRef(false);
+  const recognitionRef = useRef(null);
+  const sessionActiveTimerRef = useRef(null);
+  const [isSessionActive, setIsSessionActive] = useState(false);
+
+  // Restart active session timer
+  const refreshSessionTimer = useCallback(() => {
+    setIsSessionActive(true);
+    if (sessionActiveTimerRef.current) clearTimeout(sessionActiveTimerRef.current);
+    sessionActiveTimerRef.current = setTimeout(() => {
+      setIsSessionActive(false);
+      console.log("⏰ Voice session timed out. Wake word required again.");
+    }, 15000); // 15 seconds window
+  }, []);
+
+  // ─── Hands-free voice listening effect ───
   useEffect(() => {
-    if (!voiceMode || isRecording || orbState !== 'idle') {
-      if (wakeWordRecRef.current) {
-        try {
-          wakeWordRecRef.current.stop();
-        } catch (e) { }
-        wakeWordRecRef.current = null;
+    if (!voiceMode || orbState !== 'idle') {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch (e) {}
+        recognitionRef.current = null;
       }
-      isListeningWakeWordRef.current = false;
+      isListeningRef.current = false;
       return;
     }
 
-    if (!isListeningWakeWordRef.current) {
-      console.log("Starting wake word listener...");
-      const rec = startWakeWordDetection(async () => {
-        console.log("Wake word triggered!");
-        isListeningWakeWordRef.current = false;
-
-        // Stop current wake word listener temporarily
-        try { rec.stop(); } catch (e) { }
-        wakeWordRecRef.current = null;
-
-        // Say "bol be"
-        setOrbState('speaking');
-        const phrases = ["bol be!", "haan bhai, bol?", "kya hukum hai boss?", "kya help chahiye bhai?"];
-        const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
-
-        setMessages((prev) => [...prev, {
-          _id: Date.now().toString(),
-          role: 'assistant',
-          content: randomPhrase,
-          createdAt: new Date(),
-        }]);
-
-        await speakText(randomPhrase);
-
-        // Immediately start recording the query
-        setOrbState('listening');
-        const mimeType = await startRecording();
-        toast.success("Sun raha hun! 🎤");
-      });
-
-      wakeWordRecRef.current = rec;
-      isListeningWakeWordRef.current = true;
-    }
-
-    return () => {
-      if (wakeWordRecRef.current) {
-        try { wakeWordRecRef.current.stop(); } catch (e) { }
-        wakeWordRecRef.current = null;
-      }
-      isListeningWakeWordRef.current = false;
-    };
-  }, [voiceMode, isRecording, orbState, startWakeWordDetection, startRecording, speakText]);
-
-  // ─── Hands-free Silence Detection ───
-  useEffect(() => {
-    if (!isRecording) {
-      speechDetectedRef.current = false;
-      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-      return;
-    }
-
-    // Set a fallback timer if no speech is detected at all (5 seconds)
-    const fallbackTimer = setTimeout(async () => {
-      if (!speechDetectedRef.current && isRecording) {
-        console.log("No speech detected at all, auto-stopping...");
-        await stopRecording();
-        setOrbState('idle');
-        toast.error("Kuch sunaai nahi diya bhai");
-      }
-    }, 5000);
-
-    if (audioLevel > 0.08) {
-      speechDetectedRef.current = true;
-      if (silenceTimerRef.current) {
-        clearTimeout(silenceTimerRef.current);
-        silenceTimerRef.current = null;
-      }
-    } else if (speechDetectedRef.current) {
-      if (!silenceTimerRef.current) {
-        silenceTimerRef.current = setTimeout(async () => {
-          console.log("Silence detected, auto-stopping...");
-          const result = await stopRecording();
-          if (result) {
-            setOrbState('thinking');
-            sendVoice(result.base64, sessionId, result.mimeType);
+    if (!isListeningRef.current) {
+      console.log("📡 Starting continuous speech recognition...");
+      const rec = startContinuousListening(async (transcript) => {
+        console.log("🔊 Recognized Speech:", transcript);
+        const lower = transcript.toLowerCase();
+        
+        const wakeWords = ['jarvis', 'जार्विस', 'hey jarvis', 'he jarvis', 'bhai', 'yaar'];
+        let hasWakeWord = false;
+        let query = '';
+        
+        for (const w of wakeWords) {
+          const index = lower.indexOf(w);
+          if (index !== -1) {
+            hasWakeWord = true;
+            query = transcript.substring(index + w.length).trim();
+            break;
           }
-        }, 1800);
-      }
+        }
+        
+        // If session is active OR wake word is detected
+        if (isSessionActive || hasWakeWord) {
+          refreshSessionTimer();
+          
+          const finalQuery = hasWakeWord ? query : transcript;
+          
+          if (!finalQuery) {
+            // Just wake word detected, say greeting
+            try { rec.stop(); } catch (e) {} // Stop listening while speaking
+            
+            setOrbState('speaking');
+            const phrases = ["bol be!", "haan bhai, bol?", "kya hukum hai boss?", "kya help chahiye bhai?", "haan yaar, bol bol!"];
+            const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
+            
+            setMessages((prev) => [...prev, {
+              _id: Date.now().toString(),
+              role: 'assistant',
+              content: randomPhrase,
+              createdAt: new Date(),
+            }]);
+            
+            await speakText(randomPhrase);
+            setOrbState('idle'); // Will auto-trigger listening restart
+            return;
+          }
+          
+          // User spoke a full query!
+          try { rec.stop(); } catch (e) {} // Stop listening while processing + speaking
+          
+          // Send query
+          const userMsg = {
+            _id: Date.now().toString(),
+            role: 'user',
+            content: finalQuery,
+            createdAt: new Date(),
+          };
+          setMessages((prev) => [...prev, userMsg]);
+          sendMessage(finalQuery, sessionId);
+        }
+      });
+      
+      recognitionRef.current = rec;
+      isListeningRef.current = true;
     }
 
     return () => {
-      clearTimeout(fallbackTimer);
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch (e) {}
+        recognitionRef.current = null;
+      }
+      isListeningRef.current = false;
     };
-  }, [audioLevel, isRecording, stopRecording, sendVoice, sessionId]);
+  }, [voiceMode, orbState, isSessionActive, startContinuousListening, speakText, sendMessage, sessionId, refreshSessionTimer]);
 
   // Auto-scroll
   useEffect(() => {

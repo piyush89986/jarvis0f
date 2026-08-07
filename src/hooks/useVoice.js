@@ -145,9 +145,9 @@ export const useVoice = ({ onTranscript, onRecordingStart, onRecordingStop, onEr
   }, []);
 
   // ─────────────────────────────────────────────
-  // Wake word detection (lightweight continuous)
+  // Continuous Speech Recognition (Hands-Free)
   // ─────────────────────────────────────────────
-  const startWakeWordDetection = useCallback((onWakeWord) => {
+  const startContinuousListening = useCallback((onSpeech) => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       console.warn('Web Speech API not supported');
       return null;
@@ -156,23 +156,24 @@ export const useVoice = ({ onTranscript, onRecordingStart, onRecordingStop, onEr
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
-    recognition.interimResults = true;
+    recognition.interimResults = false;
     recognition.lang = 'hi-IN';
 
     recognition.onresult = (e) => {
-      const transcript = Array.from(e.results)
-        .map((r) => r[0].transcript)
-        .join(' ')
-        .toLowerCase();
-
-      if (transcript.includes('jarvis') || transcript.includes('जार्विस') || transcript.includes('hey jarvis')) {
-        onWakeWord();
+      const result = e.results[e.results.length - 1];
+      if (result.isFinal) {
+        const transcript = result[0].transcript.trim();
+        onSpeech(transcript);
       }
     };
 
-    recognition.onerror = () => {
-      // Restart on error for continuous listening
-      setTimeout(() => recognition.start(), 1000);
+    recognition.onerror = (err) => {
+      console.error("Speech recognition error:", err.error);
+      if (err.error !== 'aborted') {
+        setTimeout(() => {
+          try { recognition.start(); } catch (e) {}
+        }, 1000);
+      }
     };
 
     recognition.start();
@@ -186,6 +187,6 @@ export const useVoice = ({ onTranscript, onRecordingStart, onRecordingStop, onEr
     startRecording,
     stopRecording,
     speakText,
-    startWakeWordDetection,
+    startContinuousListening,
   };
 };
