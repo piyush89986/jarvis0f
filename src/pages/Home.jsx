@@ -16,7 +16,7 @@ const Home = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const [sessionId] = useState(() => uuidv4());
-  const [voiceMode, setVoiceMode] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(true);
   const [audioLevel, setAudioLevel] = useState(0);
   const [isAutoSpeak, setIsAutoSpeak] = useState(true);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
@@ -114,8 +114,8 @@ const Home = () => {
       if (wakeWordRecRef.current) {
         try {
           wakeWordRecRef.current.stop();
-        } catch (e) {}
-          wakeWordRecRef.current = null;
+        } catch (e) { }
+        wakeWordRecRef.current = null;
       }
       isListeningWakeWordRef.current = false;
       return;
@@ -126,9 +126,9 @@ const Home = () => {
       const rec = startWakeWordDetection(async () => {
         console.log("Wake word triggered!");
         isListeningWakeWordRef.current = false;
-        
+
         // Stop current wake word listener temporarily
-        try { rec.stop(); } catch (e) {}
+        try { rec.stop(); } catch (e) { }
         wakeWordRecRef.current = null;
 
         // Say "bol be"
@@ -157,7 +157,7 @@ const Home = () => {
 
     return () => {
       if (wakeWordRecRef.current) {
-        try { wakeWordRecRef.current.stop(); } catch (e) {}
+        try { wakeWordRecRef.current.stop(); } catch (e) { }
         wakeWordRecRef.current = null;
       }
       isListeningWakeWordRef.current = false;
@@ -210,6 +210,35 @@ const Home = () => {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingText]);
+
+  // Unlock browser audio autoplay restrictions on first click/touch
+  useEffect(() => {
+    const unlockAudio = () => {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (AudioContext) {
+        try {
+          const ctx = new AudioContext();
+          if (ctx.state === 'suspended') ctx.resume();
+          const buffer = ctx.createBuffer(1, 1, 22050);
+          const source = ctx.createBufferSource();
+          source.buffer = buffer;
+          source.connect(ctx.destination);
+          source.start(0);
+          console.log("🔊 Audio Autoplay unlocked successfully.");
+        } catch (e) {
+          console.error("Audio Context unlock error:", e);
+        }
+      }
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
+    window.addEventListener('click', unlockAudio);
+    window.addEventListener('touchstart', unlockAudio);
+    return () => {
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
+  }, []);
 
   // Load chat history on mount
   useEffect(() => {
@@ -360,12 +389,12 @@ const Home = () => {
 
         {/* State hint */}
         <div style={{ fontSize: '12px', color: 'var(--clr-text-secondary)', marginTop: '-8px', marginBottom: '16px', textAlign: 'center' }}>
-          {orbState === 'idle' && !voiceMode && 'Neeche type kar ya voice switch kar'}
-          {orbState === 'idle' && voiceMode && 'Mic button dabake rakh — bol apna question'}
-          {orbState === 'listening' && '🎤 Sun raha hun...'}
-          {orbState === 'thinking' && '🧠 Soch raha hun...'}
-          {orbState === 'speaking' && '🔊 Bol raha hun...'}
-          {orbState === 'error' && '⚠️ Kuch gadbad ho gayi'}
+          {orbState === 'idle' && voiceMode && '🎙️ Active Listening (Say "Jarvis" to talk)'}
+          {orbState === 'idle' && !voiceMode && '⏸️ Voice is paused. Click mic to resume.'}
+          {orbState === 'listening' && '🎤 Sunrela apun...'}
+          {orbState === 'thinking' && '🧠 sochne de database pe load aaya...'}
+          {orbState === 'speaking' && '🔊 tham na jra...'}
+          {orbState === 'error' && '⚠️ kya chhe'}
         </div>
       </div>
 
@@ -455,7 +484,7 @@ const Home = () => {
         </button>
       )}
 
-      {/* ─── Input area ─── */}
+            {/* ─── Input area ─── */}
       <div style={{
         position: 'fixed', bottom: 'var(--bottom-nav-height)', left: '50%',
         transform: 'translateX(-50%)', width: '100%', maxWidth: '480px',
@@ -463,58 +492,83 @@ const Home = () => {
         background: 'rgba(5,8,20,0.9)', backdropFilter: 'blur(20px)',
         borderTop: '1px solid var(--clr-border)', zIndex: 40,
       }}>
-        {voiceMode ? (
-          /* Voice mode — big mic button */
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', paddingBottom: '4px' }}>
-            <p style={{ fontSize: '11px', color: 'var(--clr-text-muted)', margin: 0 }}>
-              {isRecording ? 'Chod de button — message jayega' : 'Dabake rakho aur bolo'}
-            </p>
-            <button
-              className={`mic-btn ${isRecording ? 'recording' : 'idle'}`}
-              onTouchStart={handleMicPressStart}
-              onTouchEnd={handleMicPressEnd}
-              onMouseDown={handleMicPressStart}
-              onMouseUp={handleMicPressEnd}
-              onMouseLeave={handleMicPressEnd}
-            >
-              {isRecording ? <MicOff size={28} color="white" /> : <Mic size={28} color="white" />}
-            </button>
-          </div>
-        ) : (
-          /* Text mode */
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
-            <textarea
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Kuch bhi puchh — padhai, doubt, kuch bhi..."
-              rows={1}
-              style={{
-                flex: 1, background: 'var(--glass-bg)', border: '1px solid var(--clr-border)',
-                borderRadius: '16px', padding: '12px 16px', color: 'var(--clr-text-primary)',
-                fontFamily: 'Inter, sans-serif', fontSize: '14px', outline: 'none',
-                resize: 'none', maxHeight: '120px', lineHeight: '1.5',
-                transition: 'border-color 0.2s',
-              }}
-              onFocus={(e) => e.target.style.borderColor = 'var(--clr-accent-primary)'}
-              onBlur={(e) => e.target.style.borderColor = 'var(--clr-border)'}
-            />
-            <button
-              onClick={handleSendText}
-              disabled={!inputText.trim() || isStreaming}
-              style={{
-                width: '44px', height: '44px', borderRadius: '50%', flexShrink: 0,
-                background: inputText.trim() && !isStreaming ? 'var(--grad-primary)' : 'var(--clr-bg-card)',
-                border: 'none', cursor: inputText.trim() ? 'pointer' : 'default',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.2s', transform: inputText.trim() ? 'scale(1)' : 'scale(0.9)',
-                boxShadow: inputText.trim() ? '0 4px 15px rgba(99,102,241,0.4)' : 'none',
-              }}
-            >
-              {isStreaming ? <span className="spinner" style={{ width: '16px', height: '16px' }} /> : <Send size={18} color="white" />}
-            </button>
-          </div>
-        )}
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+          {/* Mic Toggle Button (Continuous Hands-Free) */}
+          <button
+            onClick={() => {
+              setVoiceMode(!voiceMode);
+              toast(voiceMode ? "Voice loop paused ⏸️" : "Voice loop active (Say 'Jarvis') 🎙️");
+            }}
+            style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '50%',
+              flexShrink: 0,
+              background: voiceMode ? 'rgba(16, 185, 129, 0.15)' : 'var(--clr-bg-card)',
+              border: voiceMode ? '1px solid var(--clr-accent-green)' : '1px solid var(--clr-border)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: voiceMode ? 'var(--clr-accent-green)' : 'var(--clr-text-secondary)',
+              transition: 'all 0.2s',
+              boxShadow: voiceMode ? '0 0 15px rgba(16, 185, 129, 0.3)' : 'none',
+              outline: 'none'
+            }}
+            title={voiceMode ? "Pause Voice Listening" : "Start Voice Listening"}
+          >
+            {voiceMode ? <Mic size={18} /> : <MicOff size={18} />}
+          </button>
+
+          {/* Text Input */}
+          <textarea
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={voiceMode ? "Say 'Jarvis' to speak... or type here" : "Type a message here..."}
+            rows={1}
+            style={{
+              flex: 1,
+              background: 'var(--glass-bg)',
+              border: '1px solid var(--clr-border)',
+              borderRadius: '16px',
+              padding: '12px 16px',
+              color: 'var(--clr-text-primary)',
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '14px',
+              outline: 'none',
+              resize: 'none',
+              maxHeight: '120px',
+              lineHeight: '1.5',
+              transition: 'border-color 0.2s',
+            }}
+            onFocus={(e) => e.target.style.borderColor = 'var(--clr-accent-primary)'}
+            onBlur={(e) => e.target.style.borderColor = 'var(--clr-border)'}
+          />
+
+          {/* Send Button */}
+          <button
+            onClick={handleSendText}
+            disabled={!inputText.trim() || isStreaming}
+            style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '50%',
+              flexShrink: 0,
+              background: inputText.trim() && !isStreaming ? 'var(--grad-primary)' : 'var(--clr-bg-card)',
+              border: 'none',
+              cursor: inputText.trim() ? 'pointer' : 'default',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s',
+              transform: inputText.trim() ? 'scale(1)' : 'scale(0.9)',
+              boxShadow: inputText.trim() ? '0 4px 15px rgba(99,102,241,0.4)' : 'none',
+            }}
+          >
+            {isStreaming ? <span className="spinner" style={{ width: '16px', height: '16px' }} /> : <Send size={18} color="white" />}
+          </button>
+        </div>
       </div>
     </div>
   );
