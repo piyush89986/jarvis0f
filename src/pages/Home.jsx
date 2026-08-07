@@ -141,7 +141,7 @@ const Home = () => {
         console.log("🔊 Recognized Speech:", transcript);
         const lower = transcript.toLowerCase();
         
-        const wakeWords = ['jarvis', 'जार्विस', 'hey jarvis', 'he jarvis', 'bhai', 'yaar'];
+        const wakeWords = ['jarvis', 'जार्विस', 'hey jarvis', 'he jarvis', 'bhai', 'yaar', 'service', 'sarvis', 'charvis', 'job is', 'java', 'travis', 'charles', 'hey buddy', 'buddy'];
         let hasWakeWord = false;
         let query = '';
         
@@ -165,8 +165,14 @@ const Home = () => {
             try { rec.stop(); } catch (e) {} // Stop listening while speaking
             
             setOrbState('speaking');
-            const phrases = ["bol be!", "haan bhai, bol?", "kya hukum hai boss?", "kya help chahiye bhai?", "haan yaar, bol bol!"];
-            const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
+            const phrases = [
+              "hey buddy im here tell whats wrong",
+              "bol be!",
+              "haan bhai, bol?",
+              "kya hukum hai boss?",
+              "kya help chahiye bhai?"
+            ];
+            const randomPhrase = phrases[0]; // Prioritize the user's favorite phrase!
             
             setMessages((prev) => [...prev, {
               _id: Date.now().toString(),
@@ -397,6 +403,9 @@ const Home = () => {
           {orbState === 'thinking' && '🧠 sochne de database pe load aaya...'}
           {orbState === 'speaking' && '🔊 tham na jra...'}
           {orbState === 'error' && '⚠️ kya chhe'}
+          <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.25)', marginTop: '4px' }}>
+            API: {import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}
+          </div>
         </div>
       </div>
 

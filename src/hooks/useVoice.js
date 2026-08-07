@@ -157,7 +157,7 @@ export const useVoice = ({ onTranscript, onRecordingStart, onRecordingStop, onEr
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = false;
-    recognition.lang = 'hi-IN';
+    recognition.lang = 'en-IN';
 
     recognition.onresult = (e) => {
       const result = e.results[e.results.length - 1];
