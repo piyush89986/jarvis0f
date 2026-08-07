@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import api from '../api/axios';
 
 export const useVoice = ({ onTranscript, onRecordingStart, onRecordingStop, onError }) => {
@@ -11,6 +11,32 @@ export const useVoice = ({ onTranscript, onRecordingStart, onRecordingStop, onEr
   const analyzerRef = useRef(null);
   const animFrameRef = useRef(null);
   const streamRef = useRef(null);
+  const audioRef = useRef(null);
+
+  // Initialize and unlock audio element on first click/touch (autoplay bypass for mobile)
+  useEffect(() => {
+    audioRef.current = new Audio();
+
+    const unlockAudio = () => {
+      if (audioRef.current) {
+        try {
+          audioRef.current.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA"; // Silent WAV
+          audioRef.current.play().catch(() => {});
+          console.log("🔊 Browser audio pipeline unlocked inside useVoice.");
+        } catch (e) {
+          console.error("Audio unlock error:", e);
+        }
+      }
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
+    window.addEventListener('click', unlockAudio);
+    window.addEventListener('touchstart', unlockAudio);
+    return () => {
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
+  }, []);
 
   // ─────────────────────────────────────────────
   // Start recording
@@ -119,24 +145,30 @@ export const useVoice = ({ onTranscript, onRecordingStart, onRecordingStop, onEr
   // Play TTS audio from API
   // ─────────────────────────────────────────────
   const speakText = useCallback(async (text) => {
+    if (!audioRef.current) return;
     try {
       setIsProcessing(true);
       const response = await api.post('/voice/speak', { text }, { responseType: 'blob' });
       const audioBlob = new Blob([response.data], { type: 'audio/mpeg' });
       const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
+
+      audioRef.current.src = audioUrl;
 
       return new Promise((resolve) => {
-        audio.onended = () => {
+        audioRef.current.onended = () => {
           URL.revokeObjectURL(audioUrl);
           setIsProcessing(false);
           resolve();
         };
-        audio.onerror = () => {
+        audioRef.current.onerror = () => {
           setIsProcessing(false);
           resolve();
         };
-        audio.play().catch(() => setIsProcessing(false));
+        audioRef.current.play().catch((err) => {
+          console.error("Playback blocked:", err);
+          setIsProcessing(false);
+          resolve();
+        });
       });
     } catch (error) {
       setIsProcessing(false);
