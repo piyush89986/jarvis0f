@@ -15,6 +15,8 @@ const OrbMesh = ({ state, audioLevel }) => {
   // State-based config
   const config = useMemo(() => {
     switch (state) {
+      case 'active':
+        return { color: '#10b981', emissive: '#059669', distort: 0.35, speed: 3, scale: 1.05 };
       case 'listening':
         return { color: '#00ff88', emissive: '#00cc66', distort: 0.6 + audioLevel * 0.8, speed: 4, scale: 1.1 + audioLevel * 0.3 };
       case 'thinking':
@@ -140,7 +142,7 @@ const Particles = ({ state }) => {
       </bufferGeometry>
       <pointsMaterial
         size={0.025}
-        color={state === 'listening' ? '#00ff88' : state === 'thinking' ? '#a855f7' : '#818cf8'}
+        color={state === 'listening' ? '#00ff88' : state === 'thinking' ? '#a855f7' : state === 'active' ? '#10b981' : '#818cf8'}
         transparent
         opacity={0.7}
         sizeAttenuation
@@ -158,6 +160,7 @@ const DynamicLighting = ({ state }) => {
 
   const lightColor = useMemo(() => {
     switch (state) {
+      case 'active': return '#10b981';
       case 'listening': return '#00ff88';
       case 'thinking': return '#a855f7';
       case 'speaking': return '#3b82f6';
@@ -218,6 +221,7 @@ const ThreeOrb = ({ state = 'idle', audioLevel = 0 }) => {
         }}
       >
         {state === 'idle' && '● STANDBY'}
+        {state === 'active' && '⚡ ACTIVE'}
         {state === 'listening' && '◉ LISTENING'}
         {state === 'thinking' && '◌ PROCESSING'}
         {state === 'speaking' && '▶ SPEAKING'}

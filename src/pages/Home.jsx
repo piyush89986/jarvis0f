@@ -350,9 +350,25 @@ const Home = () => {
           }}>🤖</div>
           <div>
             <div style={{ fontSize: '14px', fontWeight: '600', fontFamily: 'Space Grotesk' }}>J.A.R.V.I.S</div>
-            <div style={{ fontSize: '10px', color: 'var(--clr-accent-green)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--clr-accent-green)', display: 'inline-block', animation: 'micPulse 2s infinite' }} />
-              Online — {user?.branch} Sem {user?.semester}
+            <div style={{
+              fontSize: '10px',
+              color: isSessionActive ? 'var(--clr-accent-green)' : 'var(--clr-text-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              transition: 'color 0.3s ease'
+            }}>
+              <span style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                background: isSessionActive ? '#10b981' : '#6b7280',
+                display: 'inline-block',
+                boxShadow: isSessionActive ? '0 0 8px #10b981' : 'none',
+                animation: isSessionActive ? 'micPulse 1.2s infinite' : 'none',
+                transition: 'all 0.3s ease'
+              }} />
+              {isSessionActive ? '⚡ Jarvis Active' : '💤 Standby'} — {user?.branch} Sem {user?.semester}
             </div>
           </div>
         </div>
@@ -392,12 +408,16 @@ const Home = () => {
         paddingLeft: '20px', paddingRight: '20px'
       }}>
         <div className="orb-container" style={{ maxWidth: '220px', maxHeight: '220px' }}>
-          <ThreeOrb state={orbState} audioLevel={audioLevel} />
+          <ThreeOrb state={orbState === 'idle' && isSessionActive ? 'active' : orbState} audioLevel={audioLevel} />
         </div>
 
         {/* State hint */}
         <div style={{ fontSize: '12px', color: 'var(--clr-text-secondary)', marginTop: '-8px', marginBottom: '16px', textAlign: 'center' }}>
-          {orbState === 'idle' && voiceMode && '🎙️ Active Listening (Say "Jarvis" to talk)'}
+          {orbState === 'idle' && voiceMode && (
+            isSessionActive 
+              ? '🔥 Jarvis Active — Bol bhai! (No wake word needed)' 
+              : '🎙️ Wake Word Active (Say "Jarvis" to start)'
+          )}
           {orbState === 'idle' && !voiceMode && '⏸️ Voice is paused. Click mic to resume.'}
           {orbState === 'listening' && '🎤 Sunrela apun...'}
           {orbState === 'thinking' && '🧠 sochne de database pe load aaya...'}

@@ -149,7 +149,8 @@ export const useVoice = ({ onTranscript, onRecordingStart, onRecordingStop, onEr
     try {
       setIsProcessing(true);
       const response = await api.post('/voice/speak', { text }, { responseType: 'blob' });
-      const audioBlob = new Blob([response.data], { type: 'audio/mpeg' });
+      const contentType = response.headers['content-type'] || 'audio/mpeg';
+      const audioBlob = new Blob([response.data], { type: contentType });
       const audioUrl = URL.createObjectURL(audioBlob);
 
       audioRef.current.src = audioUrl;
