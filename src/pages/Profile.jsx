@@ -45,9 +45,8 @@ const Profile = () => {
   return (
     <div className="app-container page-enter" style={{ paddingTop: '70px', paddingBottom: 'calc(var(--bottom-nav-height) + 20px)' }}>
       {/* Header */}
-      <div style={{
-        position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)',
-        width: '100%', maxWidth: '480px', padding: '16px 20px', zIndex: 50,
+      <div className="fixed-header" style={{
+        padding: '16px 20px',
         background: 'rgba(5,8,20,0.9)', backdropFilter: 'blur(20px)',
         borderBottom: '1px solid var(--clr-border)',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center'

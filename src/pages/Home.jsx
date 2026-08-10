@@ -335,10 +335,8 @@ const Home = () => {
   return (
     <div className="app-container" style={{ background: 'var(--grad-bg)' }}>
       {/* Header */}
-      <div style={{
-        position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)',
-        width: '100%', maxWidth: '480px',
-        padding: '16px 20px', zIndex: 50,
+      <div className="fixed-header" style={{
+        padding: '16px 20px',
         background: 'rgba(5,8,20,0.85)', backdropFilter: 'blur(20px)',
         borderBottom: '1px solid var(--clr-border)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between'
@@ -439,7 +437,7 @@ const Home = () => {
           flex: 1, overflowY: 'auto',
           padding: '0 16px 16px',
           display: 'flex', flexDirection: 'column', gap: '12px',
-          paddingBottom: '160px' /* space for bottom input + nav */
+          paddingBottom: 'var(--chat-padding-bottom)' /* space for bottom input + nav */
         }}
       >
         {messages.map((msg) => (
@@ -543,12 +541,10 @@ const Home = () => {
       )}
 
             {/* ─── Input area ─── */}
-      <div style={{
-        position: 'fixed', bottom: 'var(--bottom-nav-height)', left: '50%',
-        transform: 'translateX(-50%)', width: '100%', maxWidth: '480px',
+      <div className="fixed-input" style={{
         padding: '12px 16px',
         background: 'rgba(5,8,20,0.9)', backdropFilter: 'blur(20px)',
-        borderTop: '1px solid var(--clr-border)', zIndex: 40,
+        borderTop: '1px solid var(--clr-border)',
       }}>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
           {/* Mic Toggle Button (Continuous Hands-Free) */}
