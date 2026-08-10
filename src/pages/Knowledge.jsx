@@ -60,20 +60,16 @@ const Knowledge = () => {
   };
 
   return (
-    <div className="app-container page-enter" style={{ paddingTop: '70px', paddingBottom: 'calc(var(--bottom-nav-height) + 20px)' }}>
+    <div className="app-container page-enter">
       {/* Header */}
-      <div className="fixed-header" style={{
-        padding: '16px 20px',
-        background: 'rgba(5,8,20,0.9)', backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid var(--clr-border)'
-      }}>
+      <div className="fixed-header" style={{ flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', height: 'auto', padding: '12px 20px' }}>
         <h1 style={{ fontSize: '17px', fontFamily: 'Space Grotesk' }}>📚 Knowledge Base</h1>
         <p style={{ fontSize: '11px', color: 'var(--clr-text-secondary)', marginTop: '2px' }}>
           Jarvis ka "Gyan ka Sagar" — apna sab notes/syllabus yahan paste kar de
         </p>
       </div>
 
-      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '60px' }}>
             <span className="spinner" style={{ width: '36px', height: '36px' }} />

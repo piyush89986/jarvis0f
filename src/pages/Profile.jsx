@@ -51,22 +51,18 @@ const Profile = () => {
   };
 
   return (
-    <div className="app-container page-enter" style={{ paddingTop: '70px', paddingBottom: 'calc(var(--bottom-nav-height) + 20px)' }}>
+    <div className="app-container page-enter">
       {/* Header */}
-      <div className="fixed-header" style={{
-        padding: '16px 20px',
-        background: 'rgba(5,8,20,0.9)', backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid var(--clr-border)',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-      }}>
+      <div className="fixed-header">
         <h1 style={{ fontSize: '17px', fontFamily: 'Space Grotesk' }}>👤 Profile</h1>
         <button onClick={() => { logout(); toast.success('Bye bhai! 👋'); }}
-          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', color: 'var(--clr-accent-red)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+          className="header-logout-btn"
+        >
           <LogOut size={13} /> Logout
         </button>
       </div>
 
-      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {/* Avatar card */}
         <div className="glass-card" style={{ padding: '24px', textAlign: 'center' }}>
           <div style={{

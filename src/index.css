@@ -504,8 +504,8 @@ select.input-field {
   display: flex;
   flex-direction: column;
   position: relative;
-  min-height: 100dvh;
-  overflow-y: auto;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 /* ─── Sidebar ─── */
@@ -573,25 +573,30 @@ select.input-field {
 
 /* ─── Responsive Fixed Elements ─── */
 .fixed-header {
-  position: fixed;
-  top: 0;
-  left: calc(50% + (var(--sidebar-width) / 2));
-  transform: translateX(-50%);
   width: 100%;
-  max-width: var(--app-max-width);
+  height: 64px;
   z-index: 50;
-  transition: left var(--transition-base), max-width var(--transition-base);
+  flex-shrink: 0;
+  background: rgba(5, 8, 20, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--clr-border);
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .fixed-input {
-  position: fixed;
-  bottom: var(--bottom-nav-height);
-  left: calc(50% + (var(--sidebar-width) / 2));
-  transform: translateX(-50%);
   width: 100%;
-  max-width: var(--app-max-width);
+  height: 70px;
   z-index: 40;
-  transition: left var(--transition-base), max-width var(--transition-base), bottom var(--transition-base);
+  flex-shrink: 0;
+  background: rgba(5, 8, 20, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--clr-border);
+  padding: 12px 20px;
 }
 
 /* ─── Safe area for phones ─── */

@@ -409,7 +409,7 @@ const Home = () => {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '80px 20px 40px',
+          padding: '20px',
           height: '100%'
         }}>
           {/* Centered Large 3D Orb */}
@@ -494,11 +494,10 @@ const Home = () => {
             style={{
               flex: 1,
               overflowY: 'auto',
-              padding: '80px 16px 16px',
+              padding: '16px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '12px',
-              paddingBottom: '100px'
+              gap: '12px'
             }}
           >
             {messages.map((msg) => (
