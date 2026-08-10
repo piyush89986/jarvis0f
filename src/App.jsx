@@ -29,7 +29,7 @@ const AdminRoute = ({ children }) => {
       <span className="spinner" style={{ width: '36px', height: '36px' }} />
     </div>
   );
-  return user && (user.role === 'admin' || user.email === 'piyushsinghtanwar091@gmail.com') ? children : <Navigate to="/" replace />;
+  return user && user.role === 'admin' ? children : <Navigate to="/" replace />;
 };
 
 // Sidebar navigation for desktop
@@ -41,7 +41,7 @@ const Sidebar = () => {
     { to: '/profile', icon: <User size={20} />, label: 'Profile', id: 'sidebar-profile' },
   ];
 
-  if (user?.role === 'admin' || user?.email === 'piyushsinghtanwar091@gmail.com') {
+  if (user?.role === 'admin') {
     navItems.push({ to: '/admin', icon: <ShieldAlert size={20} />, label: 'Admin', id: 'sidebar-admin' });
   }
 
@@ -122,7 +122,7 @@ const BottomNav = () => {
     { to: '/profile', icon: <User size={22} />, label: 'Profile', id: 'nav-profile' },
   ];
 
-  if (user?.role === 'admin' || user?.email === 'piyushsinghtanwar091@gmail.com') {
+  if (user?.role === 'admin') {
     navItems.push({ to: '/admin', icon: <ShieldAlert size={22} />, label: 'Admin', id: 'nav-admin' });
   }
 
