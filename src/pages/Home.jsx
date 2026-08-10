@@ -333,7 +333,7 @@ const Home = () => {
   };
 
   return (
-    <div className="app-container" style={{ background: 'var(--grad-bg)' }}>
+    <div className="app-container" style={{ background: 'var(--grad-bg)', height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
       <div className="fixed-header" style={{
         padding: '16px 20px',
@@ -401,229 +401,285 @@ const Home = () => {
         </div>
       </div>
 
-      {/* ─── Orb ─── */}
-      <div style={{
-        paddingTop: '80px',
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        paddingLeft: '20px', paddingRight: '20px'
-      }}>
-        <div className="orb-container" style={{ maxWidth: '220px', maxHeight: '220px' }}>
-          <ThreeOrb state={orbState === 'idle' && isSessionActive ? 'active' : orbState} audioLevel={audioLevel} />
-        </div>
-
-        {/* State hint */}
-        <div style={{ fontSize: '12px', color: 'var(--clr-text-secondary)', marginTop: '-8px', marginBottom: '16px', textAlign: 'center' }}>
-          {orbState === 'idle' && voiceMode && (
-            isSessionActive
-              ? '🔥 Jarvis Active — Bol bhai! (No wake word needed)'
-              : '🎙️ Wake Word Active (Say "Jarvis" to start)'
-          )}
-          {orbState === 'idle' && !voiceMode && '⏸️ Voice is paused. Click mic to resume.'}
-          {orbState === 'listening' && '🎤 Sunrela apun...'}
-          {orbState === 'thinking' && '🧠 sochne de database pe load aaya...'}
-          {orbState === 'speaking' && '🔊 tham na jra...'}
-          {orbState === 'error' && '⚠️ kya chhe'}
-          <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.25)', marginTop: '4px' }}>
-            API: {import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}
+      {voiceMode ? (
+        /* ──────────────── VOICE MODE ONLY ──────────────── */
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '80px 20px 40px',
+          height: '100%'
+        }}>
+          {/* Centered Large 3D Orb */}
+          <div className="orb-container" style={{ width: '260px', height: '260px', maxWidth: '100%', margin: '0 auto' }}>
+            <ThreeOrb state={orbState === 'idle' && isSessionActive ? 'active' : orbState} audioLevel={audioLevel} />
           </div>
-        </div>
-      </div>
 
-      {/* ─── Chat area ─── */}
-      <div
-        ref={chatContainerRef}
-        onScroll={handleScroll}
-        style={{
-          flex: 1, overflowY: 'auto',
-          padding: '0 16px 16px',
-          display: 'flex', flexDirection: 'column', gap: '12px',
-          paddingBottom: 'var(--chat-padding-bottom)' /* space for bottom input + nav */
-        }}
-      >
-        {messages.map((msg) => (
-          <div key={msg._id} style={{
-            display: 'flex',
-            flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
-            alignItems: 'flex-end', gap: '8px'
-          }}>
-            {/* Avatar */}
-            {msg.role === 'assistant' && (
-              <div style={{
-                width: '28px', height: '28px', borderRadius: '50%',
-                background: 'var(--grad-primary)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '14px', flexShrink: 0
-              }}>🤖</div>
+          {/* State hint & status */}
+          <div style={{ fontSize: '13px', color: 'var(--clr-text-secondary)', marginTop: '16px', textAlign: 'center' }}>
+            {orbState === 'idle' && (
+              isSessionActive 
+                ? '🔥 Jarvis Active — Bol bhai! (No wake word needed)' 
+                : '🎙️ Wake Word Active (Say "Jarvis" to start)'
             )}
+            {orbState === 'listening' && '🎤 Sunrela apun...'}
+            {orbState === 'thinking' && '🧠 sochne de database pe load aaya...'}
+            {orbState === 'speaking' && '🔊 tham na jra...'}
+            {orbState === 'error' && '⚠️ kya chhe'}
+          </div>
 
+          {/* Subtitle Overlay for speech response */}
+          {(isRecording || orbState === 'listening' || orbState === 'thinking' || orbState === 'speaking' || streamingText) && (
             <div style={{
-              display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '85%',
-              alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start'
+              marginTop: '24px',
+              width: '100%',
+              maxWidth: '360px',
+              padding: '16px',
+              borderRadius: '12px',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid var(--clr-border)',
+              textAlign: 'center',
+              fontSize: '13px',
+              lineHeight: '1.6',
+              color: 'var(--clr-text-primary)',
+              animation: 'pageIn 0.3s ease-out'
             }}>
-              <div className={`message-bubble ${msg.role}`}>
-                {msg.content}
-              </div>
-              {msg.youtubeId && (
-                <div style={{
-                  width: '100%',
-                  maxWidth: '320px',
-                  aspectRatio: '16/9',
-                  borderRadius: '12px',
-                  overflow: 'hidden',
-                  marginTop: '8px',
-                  border: '1px solid var(--clr-border)',
-                  boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
-                }}>
-                  <iframe
-                    width="100%"
-                    height="100%"
-                    src={`https://www.youtube.com/embed/${msg.youtubeId}?autoplay=1`}
-                    title="YouTube video player"
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  />
-                </div>
-              )}
-              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                <span style={{ fontSize: '10px', color: 'var(--clr-text-muted)' }}>
-                  {formatTime(msg.createdAt)}
+              {orbState === 'listening' && <span style={{ color: 'var(--clr-accent-green)', fontWeight: '500' }}>🎤 Listening to you...</span>}
+              {orbState === 'thinking' && <span style={{ color: 'var(--clr-accent-primary)', fontWeight: '500' }}>🧠 Thinking...</span>}
+              {orbState === 'speaking' && (
+                <span>
+                  🤖 <span style={{ color: 'var(--clr-text-secondary)' }}>{streamingText || 'Jarvis speaking...'}</span>
                 </span>
-                {msg.usedRAG && (
-                  <span style={{
-                    fontSize: '10px', color: 'var(--clr-accent-secondary)',
-                    display: 'flex', alignItems: 'center', gap: '2px'
-                  }}>
-                    <Zap size={9} /> notes se
-                  </span>
-                )}
-              </div>
+              )}
             </div>
+          )}
+
+          {/* Bottom Centered Mic Toggle */}
+          <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+            <button
+              onClick={() => {
+                setVoiceMode(!voiceMode);
+                toast("Keyboard mode active ⌨️");
+              }}
+              style={{
+                width: '60px',
+                height: '60px',
+                borderRadius: '50%',
+                background: 'rgba(16, 185, 129, 0.15)',
+                border: '2px solid var(--clr-accent-green)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--clr-accent-green)',
+                transition: 'all 0.3s',
+                boxShadow: '0 0 20px rgba(16, 185, 129, 0.4)',
+                outline: 'none'
+              }}
+            >
+              <Mic size={24} />
+            </button>
+            <span style={{ fontSize: '10px', color: 'var(--clr-text-muted)' }}>Mic Active (Click to pause)</span>
           </div>
-        ))}
-
-        {/* Streaming message */}
-        {isStreaming && (
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
-            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--grad-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>🤖</div>
-            <div className="message-bubble assistant" style={{ minWidth: '60px' }}>
-              {(() => {
-                const displayStreamingText = streamingText.replace(/\[YT_PLAY:\s*.*/i, '').trim();
-                return displayStreamingText ? (
-                  <span>{displayStreamingText}<span style={{ opacity: 0.5, animation: 'typingBounce 1s infinite' }}>▌</span></span>
-                ) : (
-                  <div className="typing-indicator">
-                    <span /><span /><span />
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        )}
-
-        <div ref={chatEndRef} />
-      </div>
-
-      {/* Scroll to bottom btn */}
-      {showScrollBtn && (
-        <button
-          onClick={() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
-          style={{
-            position: 'fixed', bottom: '160px', right: '20px',
-            width: '36px', height: '36px', borderRadius: '50%',
-            background: 'var(--clr-bg-secondary)', border: '1px solid var(--clr-border)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', zIndex: 40, color: 'var(--clr-text-secondary)'
-          }}
-        >
-          <ChevronDown size={16} />
-        </button>
-      )}
-
-      {/* ─── Input area ─── */}
-      <div className="fixed-input" style={{
-        padding: '12px 16px',
-        background: 'rgba(5,8,20,0.9)', backdropFilter: 'blur(20px)',
-        borderTop: '1px solid var(--clr-border)',
-      }}>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
-          {/* Mic Toggle Button (Continuous Hands-Free) */}
-          <button
-            onClick={() => {
-              setVoiceMode(!voiceMode);
-              toast(voiceMode ? "Voice loop paused ⏸️" : "Voice loop active (Say 'Jarvis') 🎙️");
-            }}
-            style={{
-              width: '44px',
-              height: '44px',
-              borderRadius: '50%',
-              flexShrink: 0,
-              background: voiceMode ? 'rgba(16, 185, 129, 0.15)' : 'var(--clr-bg-card)',
-              border: voiceMode ? '1px solid var(--clr-accent-green)' : '1px solid var(--clr-border)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: voiceMode ? 'var(--clr-accent-green)' : 'var(--clr-text-secondary)',
-              transition: 'all 0.2s',
-              boxShadow: voiceMode ? '0 0 15px rgba(16, 185, 129, 0.3)' : 'none',
-              outline: 'none'
-            }}
-            title={voiceMode ? "Pause Voice Listening" : "Start Voice Listening"}
-          >
-            {voiceMode ? <Mic size={18} /> : <MicOff size={18} />}
-          </button>
-
-          {/* Text Input */}
-          <textarea
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={voiceMode ? "'Jarvis' bol chalu ho jayega" : "Idhar apna likhne ka..."}
-            rows={1}
+        </div>
+      ) : (
+        /* ──────────────── TEXT CHAT MODE ONLY ──────────────── */
+        <>
+          {/* Chat area (Full Height) */}
+          <div
+            ref={chatContainerRef}
+            onScroll={handleScroll}
             style={{
               flex: 1,
-              background: 'var(--glass-bg)',
-              border: '1px solid var(--clr-border)',
-              borderRadius: '16px',
-              padding: '12px 16px',
-              color: 'var(--clr-text-primary)',
-              fontFamily: 'Inter, sans-serif',
-              fontSize: '14px',
-              outline: 'none',
-              resize: 'none',
-              maxHeight: '120px',
-              lineHeight: '1.5',
-              transition: 'border-color 0.2s',
-            }}
-            onFocus={(e) => e.target.style.borderColor = 'var(--clr-accent-primary)'}
-            onBlur={(e) => e.target.style.borderColor = 'var(--clr-border)'}
-          />
-
-          {/* Send Button */}
-          <button
-            onClick={handleSendText}
-            disabled={!inputText.trim() || isStreaming}
-            style={{
-              width: '44px',
-              height: '44px',
-              borderRadius: '50%',
-              flexShrink: 0,
-              background: inputText.trim() && !isStreaming ? 'var(--grad-primary)' : 'var(--clr-bg-card)',
-              border: 'none',
-              cursor: inputText.trim() ? 'pointer' : 'default',
+              overflowY: 'auto',
+              padding: '80px 16px 16px',
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s',
-              transform: inputText.trim() ? 'scale(1)' : 'scale(0.9)',
-              boxShadow: inputText.trim() ? '0 4px 15px rgba(99,102,241,0.4)' : 'none',
+              flexDirection: 'column',
+              gap: '12px',
+              paddingBottom: '100px'
             }}
           >
-            {isStreaming ? <span className="spinner" style={{ width: '16px', height: '16px' }} /> : <Send size={18} color="white" />}
-          </button>
-        </div>
-      </div>
+            {messages.map((msg) => (
+              <div key={msg._id} style={{
+                display: 'flex',
+                flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
+                alignItems: 'flex-end', gap: '8px'
+              }}>
+                {msg.role === 'assistant' && (
+                  <div style={{
+                    width: '28px', height: '28px', borderRadius: '50%',
+                    background: 'var(--grad-primary)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '14px', flexShrink: 0
+                  }}>🤖</div>
+                )}
+
+                <div style={{
+                  display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '85%',
+                  alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start'
+                }}>
+                  <div className={`message-bubble ${msg.role}`}>
+                    {msg.content}
+                  </div>
+                  {msg.youtubeId && (
+                    <div style={{
+                      width: '100%',
+                      maxWidth: '320px',
+                      aspectRatio: '16/9',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      marginTop: '8px',
+                      border: '1px solid var(--clr-border)',
+                      boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+                    }}>
+                      <iframe
+                        width="100%"
+                        height="100%"
+                        src={`https://www.youtube.com/embed/${msg.youtubeId}?autoplay=1`}
+                        title="YouTube video player"
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                      />
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '10px', color: 'var(--clr-text-muted)' }}>
+                      {formatTime(msg.createdAt)}
+                    </span>
+                    {msg.usedRAG && (
+                      <span style={{
+                        fontSize: '10px', color: 'var(--clr-accent-secondary)',
+                        display: 'flex', alignItems: 'center', gap: '2px'
+                      }}>
+                        <Zap size={9} /> notes se
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {isStreaming && (
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--grad-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>🤖</div>
+                <div className="message-bubble assistant" style={{ minWidth: '60px' }}>
+                  {(() => {
+                    const displayStreamingText = streamingText.replace(/\[YT_PLAY:\s*.*/i, '').trim();
+                    return displayStreamingText ? (
+                      <span>{displayStreamingText}<span style={{ opacity: 0.5, animation: 'typingBounce 1s infinite' }}>▌</span></span>
+                    ) : (
+                      <div className="typing-indicator">
+                        <span /><span /><span />
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+
+            <div ref={chatEndRef} />
+          </div>
+
+          {showScrollBtn && (
+            <button
+              onClick={() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
+              style={{
+                position: 'fixed', bottom: '100px', right: '20px',
+                width: '36px', height: '36px', borderRadius: '50%',
+                background: 'var(--clr-bg-secondary)', border: '1px solid var(--clr-border)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', zIndex: 40, color: 'var(--clr-text-secondary)'
+              }}
+            >
+              <ChevronDown size={16} />
+            </button>
+          )}
+
+          {/* Input Area */}
+          <div className="fixed-input" style={{
+            padding: '12px 16px',
+            background: 'rgba(5,8,20,0.9)', backdropFilter: 'blur(20px)',
+            borderTop: '1px solid var(--clr-border)',
+          }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setVoiceMode(!voiceMode);
+                  toast("Voice mode active (Say 'Jarvis') 🎙️");
+                }}
+                style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '50%',
+                  flexShrink: 0,
+                  background: 'var(--clr-bg-card)',
+                  border: '1px solid var(--clr-border)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--clr-text-secondary)',
+                  transition: 'all 0.2s',
+                  outline: 'none'
+                }}
+                title="Switch to Voice Mode"
+              >
+                <MicOff size={18} />
+              </button>
+
+              <textarea
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Idhar apna likhne ka..."
+                rows={1}
+                style={{
+                  flex: 1,
+                  background: 'var(--glass-bg)',
+                  border: '1px solid var(--clr-border)',
+                  borderRadius: '16px',
+                  padding: '12px 16px',
+                  color: 'var(--clr-text-primary)',
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: '14px',
+                  outline: 'none',
+                  resize: 'none',
+                  maxHeight: '120px',
+                  lineHeight: '1.5',
+                  transition: 'border-color 0.2s',
+                }}
+                onFocus={(e) => e.target.style.borderColor = 'var(--clr-accent-primary)'}
+                onBlur={(e) => e.target.style.borderColor = 'var(--clr-border)'}
+              />
+
+              <button
+                onClick={handleSendText}
+                disabled={!inputText.trim() || isStreaming}
+                style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '50%',
+                  flexShrink: 0,
+                  background: inputText.trim() && !isStreaming ? 'var(--grad-primary)' : 'var(--clr-bg-card)',
+                  border: 'none',
+                  cursor: inputText.trim() ? 'pointer' : 'default',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s',
+                  transform: inputText.trim() ? 'scale(1)' : 'scale(0.9)',
+                  boxShadow: inputText.trim() ? '0 4px 15px rgba(99,102,241,0.4)' : 'none',
+                }}
+              >
+                {isStreaming ? <span className="spinner" style={{ width: '16px', height: '16px' }} /> : <Send size={18} color="white" />}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
