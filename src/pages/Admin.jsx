@@ -112,7 +112,7 @@ const Admin = () => {
   }, [users, selectedUserId]);
 
   return (
-    <div className="app-container page-enter">
+    <div className="app-container page-enter" style={{ maxWidth: '100%', margin: '0', border: 'none' }}>
       {/* Header */}
       <div className="fixed-header" style={{
         padding: '16px 20px',
