@@ -69,7 +69,14 @@ const Profile = () => {
           }}>
             {user?.name?.[0]?.toUpperCase() || '🤖'}
           </div>
-          <h2 style={{ fontSize: '20px', fontFamily: 'Space Grotesk' }}>{user?.name}</h2>
+          <h2 style={{ fontSize: '20px', fontFamily: 'Space Grotesk', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            {user?.name}
+            {(user?.role === 'admin' || user?.email === 'piyushsinghtanwar091@gmail.com') && (
+              <span style={{ fontSize: '10px', background: 'rgba(239,68,68,0.15)', color: 'var(--clr-accent-red)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(239,68,68,0.2)' }}>
+                Admin
+              </span>
+            )}
+          </h2>
           <p style={{ color: 'var(--clr-text-secondary)', fontSize: '13px', marginTop: '4px' }}>
             Active Buddy since {new Date(user?.createdAt).toLocaleDateString('en-IN')}
           </p>
