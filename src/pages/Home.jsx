@@ -110,7 +110,7 @@ const Home = () => {
     setAudioLevel(voiceAudioLevel);
   }, [voiceAudioLevel]);
 
-    // Refs and States for Hands-free Voice Loop
+  // Refs and States for Hands-free Voice Loop
   const isListeningRef = useRef(false);
   const recognitionRef = useRef(null);
   const sessionActiveTimerRef = useRef(null);
@@ -130,7 +130,7 @@ const Home = () => {
   useEffect(() => {
     if (!voiceMode || orbState !== 'idle') {
       if (recognitionRef.current) {
-        try { recognitionRef.current.stop(); } catch (e) {}
+        try { recognitionRef.current.stop(); } catch (e) { }
         recognitionRef.current = null;
       }
       isListeningRef.current = false;
@@ -142,11 +142,11 @@ const Home = () => {
       const rec = startContinuousListening(async (transcript) => {
         console.log("🔊 Recognized Speech:", transcript);
         const lower = transcript.toLowerCase();
-        
-        const wakeWords = ['jarvis', 'जार्विस', 'hey jarvis', 'he jarvis', 'bhai', 'yaar', 'service', 'sarvis', 'charvis', 'job is', 'java', 'travis', 'charles', 'hey buddy', 'buddy'];
+
+        const wakeWords = ['jarvis', `buddy`];
         let hasWakeWord = false;
         let query = '';
-        
+
         for (const w of wakeWords) {
           const index = lower.indexOf(w);
           if (index !== -1) {
@@ -155,42 +155,42 @@ const Home = () => {
             break;
           }
         }
-        
+
         // If session is active OR wake word is detected
         if (isSessionActive || hasWakeWord) {
           refreshSessionTimer();
-          
+
           const finalQuery = hasWakeWord ? query : transcript;
-          
+
           if (!finalQuery) {
             // Just wake word detected, say greeting
-            try { rec.stop(); } catch (e) {} // Stop listening while speaking
-            
+            try { rec.stop(); } catch (e) { } // Stop listening while speaking
+
             setOrbState('speaking');
             const phrases = [
-              "hey buddy im here tell whats wrong",
+              "chl na chutiye",
               "bol be!",
-              "haan bhai, bol?",
-              "kya hukum hai boss?",
-              "kya help chahiye bhai?"
+              "areeeeeey apni maaaa mattttt chudaaaaaaaaaaoooooooooooooooo yrrr",
+              "lawda pakad?",
+              "tu mere pass aaya tha madarchod or puchh raha tha madad chahiye"
             ];
             const randomPhrase = phrases[0]; // Prioritize the user's favorite phrase!
-            
+
             setMessages((prev) => [...prev, {
               _id: Date.now().toString(),
               role: 'assistant',
               content: randomPhrase,
               createdAt: new Date(),
             }]);
-            
+
             await speakText(randomPhrase);
             setOrbState('idle'); // Will auto-trigger listening restart
             return;
           }
-          
+
           // User spoke a full query!
-          try { rec.stop(); } catch (e) {} // Stop listening while processing + speaking
-          
+          try { rec.stop(); } catch (e) { } // Stop listening while processing + speaking
+
           // Send query
           const userMsg = {
             _id: Date.now().toString(),
@@ -202,14 +202,14 @@ const Home = () => {
           sendMessage(finalQuery, sessionId);
         }
       });
-      
+
       recognitionRef.current = rec;
       isListeningRef.current = true;
     }
 
     return () => {
       if (recognitionRef.current) {
-        try { recognitionRef.current.stop(); } catch (e) {}
+        try { recognitionRef.current.stop(); } catch (e) { }
         recognitionRef.current = null;
       }
       isListeningRef.current = false;
@@ -262,7 +262,7 @@ const Home = () => {
           setMessages([{
             _id: 'welcome',
             role: 'assistant',
-            content: `Yo ${user?.name?.split(' ')[0] || 'bhai'}! 👋 Main J.A.R.V.I.S hun — tera personal AI study buddy.\n\nKya bolna hai? Padhai mein help chahiye, koi doubt hai, ya sirf baat karni hai — bol bhai! 🤖`,
+            content: `Yo ${user?.name?.split(' ')[0] || 'bhai'}! 👋 Main J.A.R.V.I.S hun — tera personal AI assistant aur best buddy. Bol bhai, aaj kya plan hai? Kaise help karun teri? 🤖`,
             createdAt: new Date(),
           }]);
         }
@@ -270,7 +270,7 @@ const Home = () => {
         setMessages([{
           _id: 'welcome',
           role: 'assistant',
-          content: `Yo ${user?.name?.split(' ')[0] || 'bhai'}! 👋 J.A.R.V.I.S ready hai — kya help chahiye?`,
+          content: `Yo ${user?.name?.split(' ')[0] || 'bhai'}! 👋 J.A.R.V.I.S ready hai — kya help chahiye boss? 🤖`,
           createdAt: new Date(),
         }]);
       }
@@ -368,7 +368,7 @@ const Home = () => {
                 animation: isSessionActive ? 'micPulse 1.2s infinite' : 'none',
                 transition: 'all 0.3s ease'
               }} />
-              {isSessionActive ? '⚡ Jarvis Active' : '💤 Standby'} — {user?.branch} Sem {user?.semester}
+              {isSessionActive ? '⚡ Jarvis Active' : '💤 Standby'}
             </div>
           </div>
         </div>
@@ -414,8 +414,8 @@ const Home = () => {
         {/* State hint */}
         <div style={{ fontSize: '12px', color: 'var(--clr-text-secondary)', marginTop: '-8px', marginBottom: '16px', textAlign: 'center' }}>
           {orbState === 'idle' && voiceMode && (
-            isSessionActive 
-              ? '🔥 Jarvis Active — Bol bhai! (No wake word needed)' 
+            isSessionActive
+              ? '🔥 Jarvis Active — Bol bhai! (No wake word needed)'
               : '🎙️ Wake Word Active (Say "Jarvis" to start)'
           )}
           {orbState === 'idle' && !voiceMode && '⏸️ Voice is paused. Click mic to resume.'}
@@ -540,7 +540,7 @@ const Home = () => {
         </button>
       )}
 
-            {/* ─── Input area ─── */}
+      {/* ─── Input area ─── */}
       <div className="fixed-input" style={{
         padding: '12px 16px',
         background: 'rgba(5,8,20,0.9)', backdropFilter: 'blur(20px)',
@@ -579,7 +579,7 @@ const Home = () => {
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={voiceMode ? "Say 'Jarvis' to speak... or type here" : "Type a message here..."}
+            placeholder={voiceMode ? "'Jarvis' bol chalu ho jayega" : "Idhar apna likhne ka..."}
             rows={1}
             style={{
               flex: 1,

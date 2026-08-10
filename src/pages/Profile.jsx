@@ -2,20 +2,24 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
-import { BookOpen, Clock, Flame, TrendingUp, LogOut, User, Edit3 } from 'lucide-react';
+import { Brain, Flame, LogOut, Edit3, MessageCircle } from 'lucide-react';
 
 const Profile = () => {
   const { user, logout, updateUser } = useAuth();
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ name: user?.name || '', branch: user?.branch || '', semester: user?.semester || 1, college: user?.college || '' });
+  const [form, setForm] = useState({ 
+    name: user?.name || '', 
+    preferredLanguage: user?.preferredLanguage || 'hinglish' 
+  });
   const [stats, setStats] = useState(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [subRes] = await Promise.all([api.get('/knowledge/subjects')]);
-        setStats({ subjectCount: subRes.data.subjects?.length || 0 });
+        const res = await api.get('/knowledge/subjects');
+        const totalChunks = res.data.subjectStats?.reduce((acc, curr) => acc + (curr.chunkCount || 0), 0) || 0;
+        setStats({ chunkCount: totalChunks });
       } catch (e) {}
     };
     fetchStats();
@@ -36,10 +40,8 @@ const Profile = () => {
   };
 
   const statCards = [
-    { icon: <BookOpen size={18} />, label: 'Subjects', value: stats?.subjectCount ?? '—', color: 'var(--clr-accent-primary)' },
-    { icon: <Flame size={18} />, label: 'Streak', value: `${user?.streak || 0}d`, color: '#f97316' },
-    { icon: <Clock size={18} />, label: 'Study Hrs', value: user?.totalStudyHours || 0, color: 'var(--clr-accent-green)' },
-    { icon: <TrendingUp size={18} />, label: 'Semester', value: user?.semester, color: 'var(--clr-accent-secondary)' },
+    { icon: <Brain size={18} />, label: 'Memory Chunks', value: stats?.chunkCount ?? '—', color: 'var(--clr-accent-primary)' },
+    { icon: <Flame size={18} />, label: 'Active Streak', value: `${user?.streak || 0}d`, color: '#f97316' },
   ];
 
   return (
@@ -69,8 +71,7 @@ const Profile = () => {
           </div>
           <h2 style={{ fontSize: '20px', fontFamily: 'Space Grotesk' }}>{user?.name}</h2>
           <p style={{ color: 'var(--clr-text-secondary)', fontSize: '13px', marginTop: '4px' }}>
-            {user?.branch} • Sem {user?.semester}
-            {user?.college && ` • ${user?.college}`}
+            Active Buddy since {new Date(user?.createdAt).toLocaleDateString('en-IN')}
           </p>
           <p style={{ color: 'var(--clr-text-muted)', fontSize: '12px', marginTop: '4px' }}>{user?.email}</p>
         </div>
@@ -103,20 +104,14 @@ const Profile = () => {
                 <input className="input-field" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={{ fontSize: '13px' }} />
               </div>
               <div>
-                <label style={{ fontSize: '11px', color: 'var(--clr-text-secondary)', marginBottom: '5px', display: 'block' }}>Branch</label>
-                <input className="input-field" value={form.branch} onChange={(e) => setForm({ ...form, branch: e.target.value })} style={{ fontSize: '13px' }} />
-              </div>
-              <div>
-                <label style={{ fontSize: '11px', color: 'var(--clr-text-secondary)', marginBottom: '5px', display: 'block' }}>Semester</label>
-                <select className="input-field" value={form.semester} onChange={(e) => setForm({ ...form, semester: parseInt(e.target.value) })} style={{ fontSize: '13px', cursor: 'pointer' }}>
-                  {[1,2,3,4,5,6,7,8].map((s) => <option key={s} value={s}>Sem {s}</option>)}
+                <label style={{ fontSize: '11px', color: 'var(--clr-text-secondary)', marginBottom: '5px', display: 'block' }}>Preferred Language</label>
+                <select className="input-field" value={form.preferredLanguage} onChange={(e) => setForm({ ...form, preferredLanguage: e.target.value })} style={{ fontSize: '13px', cursor: 'pointer' }}>
+                  <option value="hinglish">Hinglish (Hindi + English)</option>
+                  <option value="english">English Only</option>
+                  <option value="hindi">Hindi Only (हिन्दी)</option>
                 </select>
               </div>
-              <div>
-                <label style={{ fontSize: '11px', color: 'var(--clr-text-secondary)', marginBottom: '5px', display: 'block' }}>College</label>
-                <input className="input-field" value={form.college} onChange={(e) => setForm({ ...form, college: e.target.value })} placeholder="Optional" style={{ fontSize: '13px' }} />
-              </div>
-              <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ height: '44px' }}>
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ height: '44px', marginTop: '6px' }}>
                 {saving ? <span className="spinner" /> : 'Save karo ✓'}
               </button>
             </div>
@@ -124,9 +119,7 @@ const Profile = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {[
                 { label: 'Name', value: user?.name },
-                { label: 'Branch', value: user?.branch },
-                { label: 'Semester', value: `Sem ${user?.semester}` },
-                { label: 'College', value: user?.college || 'Not set' },
+                { label: 'Language Preference', value: user?.preferredLanguage === 'hinglish' ? 'Hinglish' : user?.preferredLanguage === 'hindi' ? 'Hindi' : 'English' },
               ].map((item) => (
                 <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--clr-border)' }}>
                   <span style={{ fontSize: '12px', color: 'var(--clr-text-secondary)' }}>{item.label}</span>
@@ -141,7 +134,7 @@ const Profile = () => {
         <div className="glass-card" style={{ padding: '16px', background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.2)' }}>
           <p style={{ fontSize: '12px', color: 'var(--clr-text-secondary)', textAlign: 'center', lineHeight: '1.7' }}>
             🤖 <strong style={{ color: 'var(--clr-accent-primary)' }}>J.A.R.V.I.S</strong> — Just A Rather Very Intelligent System<br />
-            Built for B.Tech students who need a smart study buddy 🎓
+            Your smart, personal AI assistant companion ⚡
           </p>
         </div>
       </div>
