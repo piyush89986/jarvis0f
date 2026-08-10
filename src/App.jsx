@@ -1,13 +1,14 @@
 import { BrowserRouter, Routes, Route, Navigate, NavLink } from 'react-router-dom';
 import toast, { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { MessageCircle, BookOpen, User, LogOut } from 'lucide-react';
+import { MessageCircle, BookOpen, User, LogOut, ShieldAlert } from 'lucide-react';
 
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Knowledge from './pages/Knowledge';
 import Profile from './pages/Profile';
+import Admin from './pages/Admin';
 
 // Protected route wrapper
 const Protected = ({ children }) => {
@@ -20,6 +21,17 @@ const Protected = ({ children }) => {
   return user ? children : <Navigate to="/login" replace />;
 };
 
+// Admin route wrapper
+const AdminRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  if (loading) return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100dvh', background: 'var(--clr-bg-primary)' }}>
+      <span className="spinner" style={{ width: '36px', height: '36px' }} />
+    </div>
+  );
+  return user && user.role === 'admin' ? children : <Navigate to="/" replace />;
+};
+
 // Sidebar navigation for desktop
 const Sidebar = () => {
   const { user, logout } = useAuth();
@@ -28,6 +40,10 @@ const Sidebar = () => {
     { to: '/knowledge', icon: <BookOpen size={20} />, label: 'Knowledge', id: 'sidebar-knowledge' },
     { to: '/profile', icon: <User size={20} />, label: 'Profile', id: 'sidebar-profile' },
   ];
+
+  if (user?.role === 'admin') {
+    navItems.push({ to: '/admin', icon: <ShieldAlert size={20} />, label: 'Admin', id: 'sidebar-admin' });
+  }
 
   return (
     <aside className="sidebar">
@@ -38,7 +54,7 @@ const Sidebar = () => {
           <h2 style={{ fontSize: '18px', fontFamily: 'Space Grotesk', margin: 0, background: 'var(--grad-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
             J.A.R.V.I.S
           </h2>
-          <span style={{ fontSize: '9px', color: 'var(--clr-text-secondary)' }}>AI Study Assistant</span>
+          <span style={{ fontSize: '9px', color: 'var(--clr-text-secondary)' }}>Personal AI Assistant</span>
         </div>
       </div>
 
@@ -99,11 +115,16 @@ const Sidebar = () => {
 
 // Bottom navigation for mobile
 const BottomNav = () => {
+  const { user } = useAuth();
   const navItems = [
     { to: '/', icon: <MessageCircle size={22} />, label: 'Chat', id: 'nav-chat' },
     { to: '/knowledge', icon: <BookOpen size={22} />, label: 'Knowledge', id: 'nav-knowledge' },
     { to: '/profile', icon: <User size={22} />, label: 'Profile', id: 'nav-profile' },
   ];
+
+  if (user?.role === 'admin') {
+    navItems.push({ to: '/admin', icon: <ShieldAlert size={22} />, label: 'Admin', id: 'nav-admin' });
+  }
 
   return (
     <nav className="bottom-nav">
@@ -172,6 +193,11 @@ function App() {
             <Protected>
               <AppLayout><Profile /></AppLayout>
             </Protected>
+          } />
+          <Route path="/admin" element={
+            <AdminRoute>
+              <AppLayout><Admin /></AppLayout>
+            </AdminRoute>
           } />
 
           {/* Fallback */}
