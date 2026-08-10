@@ -40,7 +40,8 @@ const Home = () => {
       setStreamingText(streamBufferRef.current);
     },
     onDone: async ({ message, usedRAG }) => {
-      const finalContent = streamBufferRef.current;
+      const finalContent = message?.content || streamBufferRef.current.replace(/\[YT_PLAY:\s*.+?\]/i, '').trim();
+      const youtubeId = message?.youtubeId || null;
       streamBufferRef.current = '';
       setStreamingText('');
       setIsStreaming(false);
@@ -51,6 +52,7 @@ const Home = () => {
         role: 'assistant',
         content: finalContent,
         usedRAG,
+        youtubeId,
         createdAt: new Date(),
       };
       setMessages((prev) => [...prev, assistantMsg]);
@@ -463,6 +465,28 @@ const Home = () => {
               <div className={`message-bubble ${msg.role}`}>
                 {msg.content}
               </div>
+              {msg.youtubeId && (
+                <div style={{
+                  width: '100%',
+                  maxWidth: '320px',
+                  aspectRatio: '16/9',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  marginTop: '8px',
+                  border: '1px solid var(--clr-border)',
+                  boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+                }}>
+                  <iframe
+                    width="100%"
+                    height="100%"
+                    src={`https://www.youtube.com/embed/${msg.youtubeId}?autoplay=1`}
+                    title="YouTube video player"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                </div>
+              )}
               <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                 <span style={{ fontSize: '10px', color: 'var(--clr-text-muted)' }}>
                   {formatTime(msg.createdAt)}
@@ -485,13 +509,16 @@ const Home = () => {
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
             <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--grad-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>🤖</div>
             <div className="message-bubble assistant" style={{ minWidth: '60px' }}>
-              {streamingText ? (
-                <span>{streamingText}<span style={{ opacity: 0.5, animation: 'typingBounce 1s infinite' }}>▌</span></span>
-              ) : (
-                <div className="typing-indicator">
-                  <span /><span /><span />
-                </div>
-              )}
+              {(() => {
+                const displayStreamingText = streamingText.replace(/\[YT_PLAY:\s*.*/i, '').trim();
+                return displayStreamingText ? (
+                  <span>{displayStreamingText}<span style={{ opacity: 0.5, animation: 'typingBounce 1s infinite' }}>▌</span></span>
+                ) : (
+                  <div className="typing-indicator">
+                    <span /><span /><span />
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
