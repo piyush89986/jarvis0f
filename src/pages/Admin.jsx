@@ -13,6 +13,14 @@ const Admin = () => {
   const [loadingChats, setLoadingChats] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState(null);
 
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Fetch all users on mount
   useEffect(() => {
     const fetchUsers = async () => {
@@ -119,9 +127,24 @@ const Admin = () => {
         </p>
       </div>
 
-      <div className="admin-body">
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        gap: '16px',
+        padding: '16px',
+        height: isMobile ? 'auto' : 'calc(100vh - 90px)',
+        overflow: isMobile ? 'visible' : 'hidden'
+      }}>
         {/* Users List Panel (Left) */}
-        <div className="glass-card admin-users-card">
+        <div className="glass-card" style={{
+          width: isMobile ? '100%' : '320px',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '16px',
+          height: isMobile ? '350px' : '100%',
+          flexShrink: 0
+        }}>
           <h3 style={{ fontSize: '13px', fontWeight: '600', marginBottom: '12px', color: 'var(--clr-text-primary)' }}>
             Users ({filteredUsers.length})
           </h3>
@@ -185,7 +208,13 @@ const Admin = () => {
         </div>
 
         {/* Chats Inspect Panel (Right) */}
-        <div className="glass-card admin-chats-card">
+        <div className="glass-card" style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          height: isMobile ? '500px' : '100%',
+          overflow: 'hidden'
+        }}>
           {!selectedUserId ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--clr-text-muted)', gap: '10px' }}>
               <User size={36} />
