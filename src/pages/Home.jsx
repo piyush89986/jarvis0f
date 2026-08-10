@@ -168,13 +168,13 @@ const Home = () => {
 
             setOrbState('speaking');
             const phrases = [
-              "chl na chutiye",
-              "bol be!",
-              "areeeeeey apni maaaa mattttt chudaaaaaaaaaaoooooooooooooooo yrrr",
-              "lawda pakad?",
-              "tu mere pass aaya tha madarchod or puchh raha tha madad chahiye"
+              "Haan bhai, bol! Kya help chahiye?",
+              "Haan sun raha hun, bol kya baat hai?",
+              "Arrey bol yaar, main ready hun!",
+              "Bol bhai, kaise madad karun teri?",
+              "Ji boss, boliye kya plan hai?"
             ];
-            const randomPhrase = phrases[0]; // Prioritize the user's favorite phrase!
+            const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
 
             setMessages((prev) => [...prev, {
               _id: Date.now().toString(),
