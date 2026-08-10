@@ -104,7 +104,7 @@ const Admin = () => {
   }, [users, selectedUserId]);
 
   return (
-    <div className="app-container page-enter" style={{ paddingTop: '70px', paddingBottom: '20px', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="app-container page-enter">
       {/* Header */}
       <div className="fixed-header" style={{
         padding: '16px 20px',
@@ -119,23 +119,9 @@ const Admin = () => {
         </p>
       </div>
 
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        gap: '16px',
-        padding: '16px',
-        height: 'calc(100vh - 90px)',
-        overflow: 'hidden'
-      }}>
+      <div className="admin-body">
         {/* Users List Panel (Left) */}
-        <div className="glass-card" style={{
-          width: '320px',
-          display: 'flex',
-          flexDirection: 'column',
-          padding: '16px',
-          height: '100%',
-          flexShrink: 0
-        }}>
+        <div className="glass-card admin-users-card">
           <h3 style={{ fontSize: '13px', fontWeight: '600', marginBottom: '12px', color: 'var(--clr-text-primary)' }}>
             Users ({filteredUsers.length})
           </h3>
@@ -199,13 +185,7 @@ const Admin = () => {
         </div>
 
         {/* Chats Inspect Panel (Right) */}
-        <div className="glass-card" style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100%',
-          overflow: 'hidden'
-        }}>
+        <div className="glass-card admin-chats-card">
           {!selectedUserId ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--clr-text-muted)', gap: '10px' }}>
               <User size={36} />
@@ -232,51 +212,55 @@ const Admin = () => {
                 </div>
               </div>
 
-              {/* Body: Session list on left, Messages on right */}
-              <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-                
-                {/* Session list (Inside right panel) */}
-                <div style={{ width: '180px', borderRight: '1px solid var(--clr-border)', padding: '12px 8px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
-                  <span style={{ fontSize: '10px', fontWeight: '600', color: 'var(--clr-text-muted)', textTransform: 'uppercase', paddingLeft: '4px', marginBottom: '4px', display: 'block' }}>Sessions</span>
-                  
-                  {loadingChats ? (
-                    <span className="spinner" style={{ width: '16px', height: '16px', margin: '16px auto' }} />
-                  ) : sortedSessionIds.length === 0 ? (
-                    <span style={{ fontSize: '11px', color: 'var(--clr-text-muted)', textAlign: 'center', padding: '10px 0' }}>No chat sessions</span>
-                  ) : (
-                    sortedSessionIds.map((sid) => {
+              {/* Session Selector Dropdown at the top */}
+              <div style={{
+                padding: '10px 16px',
+                borderBottom: '1px solid var(--clr-border)',
+                background: 'rgba(255,255,255,0.02)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                flexShrink: 0
+              }}>
+                <span style={{ fontSize: '11px', fontWeight: '600', color: 'var(--clr-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Clock size={12} /> Session:
+                </span>
+                {loadingChats ? (
+                  <span className="spinner" style={{ width: '12px', height: '12px' }} />
+                ) : sortedSessionIds.length === 0 ? (
+                  <span style={{ fontSize: '11px', color: 'var(--clr-text-muted)' }}>No sessions found</span>
+                ) : (
+                  <select
+                    value={selectedSessionId || ''}
+                    onChange={(e) => setSelectedSessionId(e.target.value)}
+                    className="input-field"
+                    style={{
+                      flex: 1,
+                      height: '32px',
+                      padding: '0 8px',
+                      fontSize: '12px',
+                      background: 'rgba(0,0,0,0.3)',
+                      border: '1px solid var(--clr-border)',
+                      borderRadius: '6px',
+                      color: 'var(--clr-text-primary)',
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    {sortedSessionIds.map((sid) => {
                       const firstMsg = chatSessions[sid][0];
                       return (
-                        <button
-                          key={sid}
-                          onClick={() => setSelectedSessionId(sid)}
-                          style={{
-                            background: selectedSessionId === sid ? 'rgba(255,255,255,0.05)' : 'transparent',
-                            border: 'none',
-                            borderRadius: '6px',
-                            padding: '8px',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                            color: selectedSessionId === sid ? 'var(--clr-text-primary)' : 'var(--clr-text-secondary)',
-                            transition: 'all 0.2s',
-                            width: '100%',
-                            outline: 'none'
-                          }}
-                        >
-                          <div style={{ fontSize: '11px', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {sid.substring(0, 10)}...
-                          </div>
-                          <div style={{ fontSize: '9px', color: 'var(--clr-text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                            <Calendar size={8} /> {firstMsg ? formatDate(firstMsg.createdAt) : '—'}
-                          </div>
-                        </button>
+                        <option key={sid} value={sid} style={{ background: '#0a0f24' }}>
+                          {sid.substring(0, 15)}... ({firstMsg ? formatDate(firstMsg.createdAt) : '—'})
+                        </option>
                       );
-                    })
-                  )}
-                </div>
+                    })}
+                  </select>
+                )}
+              </div>
 
-                {/* Message display log (Inside right panel) */}
-                <div style={{ flex: 1, padding: '16px', overflowY: 'auto', background: 'rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Body: Wide Messages Log */}
+              <div style={{ flex: 1, padding: '16px', overflowY: 'auto', background: 'rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {loadingChats ? (
                     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
                       <span className="spinner" style={{ width: '32px', height: '32px' }} />
@@ -308,7 +292,7 @@ const Admin = () => {
                           display: 'flex', flexDirection: 'column', gap: '3px', maxWidth: '80%',
                           alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start'
                         }}>
-                          <div className={`message-bubble ${msg.role}`} style={{ fontSize: '13px', padding: '10px 12px' }}>
+                          <div className={`message-bubble ${msg.role}`}>
                             {msg.content}
                           </div>
                           
@@ -340,8 +324,6 @@ const Admin = () => {
                     ))
                   )}
                 </div>
-
-              </div>
             </div>
           )}
         </div>
