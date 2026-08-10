@@ -44,6 +44,12 @@ const Profile = () => {
     { icon: <Flame size={18} />, label: 'Active Streak', value: `${user?.streak || 0}d`, color: '#f97316' },
   ];
 
+  const getJoinDate = () => {
+    if (!user?.createdAt) return 'Recently';
+    const d = new Date(user.createdAt);
+    return isNaN(d.getTime()) ? 'Recently' : d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
   return (
     <div className="app-container page-enter" style={{ paddingTop: '70px', paddingBottom: 'calc(var(--bottom-nav-height) + 20px)' }}>
       {/* Header */}
@@ -78,7 +84,7 @@ const Profile = () => {
             )}
           </h2>
           <p style={{ color: 'var(--clr-text-secondary)', fontSize: '13px', marginTop: '4px' }}>
-            Active Buddy since {new Date(user?.createdAt).toLocaleDateString('en-IN')}
+            Active Buddy since {getJoinDate()}
           </p>
           <p style={{ color: 'var(--clr-text-muted)', fontSize: '12px', marginTop: '4px' }}>{user?.email}</p>
         </div>

@@ -471,6 +471,17 @@ select.input-field {
   font-size: 13px !important;
 }
 
+/* ─── Page Container ─── */
+.app-container {
+  width: 100%;
+  max-width: var(--app-max-width);
+  margin: 0 auto;
+  min-height: 100dvh;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
 /* ─── Responsive breakpoints ─── */
 @media (min-width: 481px) {
   .app-container {
